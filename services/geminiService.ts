@@ -2,7 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Initialize the Gemini API client using the environment variable as per guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getInstitutionalAnalysis = async (
   symbol: string,
@@ -18,7 +19,8 @@ export const getInstitutionalAnalysis = async (
     1. Overall Bias (BULLISH, BEARISH, NEUTRAL)
     2. A confidence score from -10 to +10.
     3. Institutional reasoning (mentioning concepts like Order Blocks, Fair Value Gaps, or Liquidity Sweeps).
-    4. 3 specific institutional insights.`;
+    4. 3 specific institutional insights.
+    5. Recommended Action (BUY, SELL, WAIT)`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -34,21 +36,25 @@ export const getInstitutionalAnalysis = async (
             institutionalInsights: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
-            }
+            },
+            recommendedAction: { type: Type.STRING }
           },
-          required: ["bias", "score", "reasoning", "institutionalInsights"]
+          required: ["bias", "score", "reasoning", "institutionalInsights", "recommendedAction"]
         }
       }
     });
 
-    return JSON.parse(response.text) as AnalysisResult;
+    // Access the .text property directly from the GenerateContentResponse object
+    return JSON.parse(response.text || '{}') as AnalysisResult;
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
+    // Include recommendedAction to fulfill the AnalysisResult interface requirements
     return {
       bias: 'NEUTRAL',
       score: 0,
       reasoning: "Analysis temporarily unavailable. Maintaining previous bias based on EMA confluence.",
-      institutionalInsights: ["Market volatility increasing", "Awaiting session liquidity", "Order book stabilizing"]
+      institutionalInsights: ["Market volatility increasing", "Awaiting session liquidity", "Order book stabilizing"],
+      recommendedAction: 'WAIT'
     };
   }
 };
