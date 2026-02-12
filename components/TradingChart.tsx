@@ -12,11 +12,9 @@ import {
   Bar,
   Cell,
   ReferenceArea,
-  ReferenceLine,
   Scatter
 } from 'recharts';
 import { PricePoint, Zone } from '../types';
-import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 interface TradingChartProps {
   data: PricePoint[];
@@ -25,101 +23,135 @@ interface TradingChartProps {
 }
 
 const TradingChart: React.FC<TradingChartProps> = ({ data, zones, symbol }) => {
-  const displayData = data.slice(-80);
+  const displayData = data.slice(-100);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative bg-white rounded-2xl overflow-hidden shadow-inner border border-neutral-200">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={displayData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
+        <ComposedChart data={displayData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
           <defs>
             <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+              <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="1 10" stroke="#1a1a1a" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={true} />
           
           <XAxis 
             dataKey="time" 
-            stroke="#333" 
+            stroke="#999" 
             fontSize={9} 
             tickLine={false} 
             axisLine={false}
-            minTickGap={50}
+            minTickGap={40}
           />
           
           <YAxis 
             yAxisId="price"
             domain={['auto', 'auto']} 
             orientation="right" 
-            stroke="#444" 
+            stroke="#666" 
             fontSize={10} 
-            tickLine={false} 
+            tickLine={true} 
             axisLine={false}
             tickFormatter={(val) => val.toLocaleString()}
           />
 
           <YAxis 
             yAxisId="volume"
-            domain={[0, (data) => Math.max(...displayData.map(d => d.volume)) * 5]} 
+            domain={[0, (data) => Math.max(...displayData.map(d => d.volume)) * 4]} 
             orientation="left" 
             hide={true}
           />
 
-          {/* Supply/Demand Zones */}
+          {/* Institutional Zones: Supply (Red) and Demand (Green) */}
           {zones.map((zone, idx) => (
             <ReferenceArea
               key={idx}
               yAxisId="price"
-              y1={zone.price * 0.9995}
-              y2={zone.price * 1.0005}
-              fill={zone.type === 'SUPPLY' ? 'rgba(244, 63, 94, 0.05)' : 'rgba(16, 185, 129, 0.05)'}
-              stroke={zone.type === 'SUPPLY' ? '#f43f5e' : '#10b981'}
-              strokeOpacity={0.2}
-              strokeDasharray="3 3"
+              y1={zone.bottom}
+              y2={zone.top}
+              fill={zone.type === 'SUPPLY' ? '#fee2e2' : '#dcfce7'}
+              stroke={zone.type === 'SUPPLY' ? '#ef4444' : '#22c55e'}
+              strokeOpacity={0.3}
+              strokeDasharray="4 4"
             />
           ))}
 
           <Tooltip 
-            contentStyle={{ backgroundColor: '#000', border: '1px solid #222', borderRadius: '8px', fontSize: '10px' }}
-            cursor={{ stroke: '#333' }}
+            contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '8px', fontSize: '11px', color: '#000' }}
+            itemStyle={{ color: '#333' }}
+            cursor={{ stroke: '#2563eb', strokeWidth: 1, strokeDasharray: '5 5' }}
           />
 
+          {/* Main Price Action */}
           <Area 
             yAxisId="price"
             type="monotone" 
             dataKey="price" 
-            stroke="#555" 
-            strokeWidth={1} 
+            stroke="#2563eb" 
+            strokeWidth={2} 
             fill="url(#colorPrice)" 
             animationDuration={0}
           />
 
-          {/* Strategy Lines */}
-          <Line yAxisId="price" dataKey="smaFast" stroke="#3b82f6" strokeWidth={1} dot={false} isAnimationActive={false} />
-          <Line yAxisId="price" dataKey="smaSlow" stroke="#ef4444" strokeWidth={1} dot={false} isAnimationActive={false} />
+          {/* SMA Strategies */}
+          <Line yAxisId="price" dataKey="smaFast" stroke="#3b82f6" strokeWidth={1} dot={false} isAnimationActive={false} opacity={0.6} />
+          <Line yAxisId="price" dataKey="smaSlow" stroke="#f43f5e" strokeWidth={1} dot={false} isAnimationActive={false} opacity={0.6} />
 
-          {/* Volume bars */}
+          {/* Market Structure Markers (BoS / ChoCh) */}
+          <Scatter 
+            yAxisId="price" 
+            data={displayData.filter(d => d.marker)} 
+            shape={(props: any) => {
+              const { cx, cy, payload } = props;
+              if (!payload || !payload.marker) return <circle />;
+              const marker = payload.marker;
+              return (
+                <g>
+                  <circle cx={cx} cy={cy} r={4} fill={marker.type === 'ChoCh' ? '#8b5cf6' : '#2563eb'} />
+                  <text x={cx} y={cy - 10} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#000">
+                    {marker.type}
+                  </text>
+                </g>
+              );
+            }} 
+          />
+
+          {/* Volume Delta */}
           <Bar yAxisId="volume" dataKey="volume" radius={[2, 2, 0, 0]}>
-            {displayData.map((entry, index) => (
-              <Cell key={index} fill={entry.price > (displayData[index-1]?.price || 0) ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'} />
-            ))}
+            {displayData.map((entry, index) => {
+              const isUp = entry.price > (displayData[index-1]?.price || 0);
+              return <Cell key={index} fill={isUp ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'} />;
+            })}
           </Bar>
 
-          {/* Reversal Signals */}
+          {/* Reversal Indicator Arrows */}
           <Scatter 
             yAxisId="price" 
             data={displayData.filter(d => d.isReversal)} 
             shape={(props: any) => {
               const { cx, cy, payload } = props;
-              if (payload.isReversal === 'BUY') {
-                return <circle cx={cx} cy={cy} r={6} fill="#10b981" stroke="#fff" strokeWidth={2} />;
-              }
-              return <circle cx={cx} cy={cy} r={6} fill="#f43f5e" stroke="#fff" strokeWidth={2} />;
+              if (!payload || !payload.isReversal) return <path />;
+              const isBuy = payload.isReversal === 'BUY';
+              return (
+                <path 
+                  d={isBuy ? "M0 -10 L10 10 L-10 10 Z" : "M0 10 L10 -10 L-10 -10 Z"} 
+                  transform={`translate(${cx}, ${isBuy ? cy + 15 : cy - 15})`} 
+                  fill={isBuy ? '#22c55e' : '#ef4444'} 
+                  stroke="#fff" 
+                  strokeWidth={1}
+                />
+              );
             }} 
           />
         </ComposedChart>
       </ResponsiveContainer>
+      
+      {/* Watermark for Institutional Grade */}
+      <div className="absolute top-4 left-6 pointer-events-none opacity-20">
+        <span className="text-xs font-black tracking-widest text-neutral-400 uppercase">SMC Structural Flow Engine</span>
+      </div>
     </div>
   );
 };

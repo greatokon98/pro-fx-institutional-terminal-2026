@@ -1,5 +1,12 @@
 
-export type Timeframe = '30S' | '2M' | '5M' | '15M' | '30M' | '1H' | '4H' | '1D';
+export type Timeframe = '30S' | '2M' | '5M' | '10M' | '15M' | '30M' | '1H' | '4H' | '1D';
+
+export interface MarketMarker {
+  type: 'ChoCh' | 'BoS' | 'Sweep';
+  price: number;
+  time: string;
+  direction: 'UP' | 'DOWN';
+}
 
 export interface PricePoint {
   time: string;
@@ -9,12 +16,16 @@ export interface PricePoint {
   smaSlow: number;
   volume: number;
   isReversal?: 'BUY' | 'SELL' | null;
+  marker?: MarketMarker | null;
 }
 
 export interface Zone {
   type: 'SUPPLY' | 'DEMAND';
   price: number;
+  top: number;
+  bottom: number;
   strength: number;
+  mitigated: boolean;
 }
 
 export interface Order {
